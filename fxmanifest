@@ -1,0 +1,9 @@
+fx_version 'cerulean'
+game 'gta5'
+
+author 'toxicfivem.com'
+description 'Free ToxicFivem ID Görme Scripti - ID, İsim ve Meslek Gösterir'
+version '1.1.4'
+
+client_script 'client.lua'
+server_script 'server.lua'
