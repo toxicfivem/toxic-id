@@ -1,0 +1,92 @@
+local displayIDs = false
+local playerData = {}
+
+-- Z tuşuna basıldığında ID görünürlüğünü aç, bırakıldığında kapat
+Citizen.CreateThread(function()
+    while true do
+        Citizen.Wait(0)
+        if IsControlPressed(0, 20) then  -- 20, Z tuşunun kontrol kodudur
+            if not displayIDs then
+                displayIDs = true
+                TriggerServerEvent("toxic-id:getAllPlayerData")  -- Tüm oyuncuların meslek ve isim bilgilerini sunucudan talep et
+            end
+
+            -- Tüm aktif oyuncuların bilgilerini topla ve göster
+            for _, player in ipairs(GetActivePlayers()) do
+                local ped = GetPlayerPed(player)
+                local playerId = GetPlayerServerId(player)
+                local playerCoords = GetPedBoneCoords(GetPlayerPed(player), 0x796e, 0.0, 0.0, 0.0)
+                local playerPos = GetEntityCoords(PlayerPedId())
+                local dist = #(playerCoords - playerPos)
+                
+
+                -- Oyuncu arabada olup olmadığına bakmaksızın tüm oyuncuları göster (örneğin, 30 metre)
+                if dist < 30.0 and playerData[playerId] then
+                    local charName = playerData[playerId].charName
+                    local job = playerData[playerId].job
+                    local health = GetEntityHealth(ped) - 100
+
+                    -- Çevredeki oyuncunun bilgilerini başının üzerinde göster
+                    DrawText3D(playerCoords.x, playerCoords.y, playerCoords.z + 0.45, "ID: " .. playerId .. " | " .. charName .. " | " .. job)
+                    DrawHealthBar3D(playerCoords.x, playerCoords.y, playerCoords.z + 0.35, health)
+                end
+            end
+        else
+            if displayIDs then
+                displayIDs = false
+            end
+        end
+    end
+end)
+
+RegisterNetEvent("toxic-id:receiveAllPlayerData")
+AddEventHandler("toxic-id:receiveAllPlayerData", function(allPlayerData)
+    playerData = allPlayerData
+end)
+
+-- 3D Text Çizim Fonksiyonu
+function DrawText3D(x, y, z, text)
+    local onScreen, _x, _y = World3dToScreen2d(x, y, z)
+    local px, py, pz = table.unpack(GetGameplayCamCoords())
+    local dist = #(vec3(px, py, pz) - vec3(x, y, z))
+
+    local scale = (1 / dist) * 2
+    local fov = (1 / GetGameplayCamFov()) * 100
+    scale = scale * fov
+
+    if onScreen then
+        SetTextScale(0.35 * scale, 0.35 * scale)
+        SetTextFont(4)
+        SetTextProportional(1)
+        SetTextColour(255, 255, 255, 215)
+        SetTextEntry("STRING")
+        SetTextCentre(1)
+        AddTextComponentString(text)
+        DrawText(_x, _y)
+    end
+end
+
+-- 3D Sağlık Barı Çizim Fonksiyonu
+function DrawHealthBar3D(x, y, z, health)
+    local onScreen, _x, _y = World3dToScreen2d(x, y, z)
+    local px, py, pz = table.unpack(GetGameplayCamCoords())
+    local dist = #(vec3(px, py, pz) - vec3(x, y, z))
+
+    local scale = (1 / dist) * 2
+    local fov = (1 / GetGameplayCamFov()) * 100
+    scale = scale * fov
+
+    if onScreen then
+        local width = 0.04 * scale  -- Sağlık barının genişliği
+        local height = 0.008 * scale  -- Sağlık barının yüksekliği
+        local barWidth = width * (health / 100)  -- Sağlığa göre barın doluluk oranı
+
+        -- Sağlık doluluk barı (yeşil)
+        local barColor = { r = 0, g = 255, b = 0 }
+        if health <= 50 then
+            barColor = { r = 255, g = 0, b = 0 }
+        end
+
+        DrawRect(_x - (width - barWidth) / 2, _y + 0.012 * scale, barWidth, height, barColor.r, barColor.g, barColor.b, 150)
+    end
+end
